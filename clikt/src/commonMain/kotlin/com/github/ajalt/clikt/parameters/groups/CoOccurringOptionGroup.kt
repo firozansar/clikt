@@ -8,7 +8,7 @@ import com.github.ajalt.clikt.parameters.options.FinalValue
 import com.github.ajalt.clikt.parameters.options.Option
 import com.github.ajalt.clikt.parameters.options.OptionWithValues
 import com.github.ajalt.clikt.parameters.options.getFinalValue
-import com.github.ajalt.clikt.parsers.OptionParser
+import com.github.ajalt.clikt.parsers.Invocation
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
 
@@ -35,7 +35,7 @@ class CoOccurringOptionGroup<GroupT : OptionGroup, OutT> internal constructor(
 
     override fun getValue(thisRef: CliktCommand, property: KProperty<*>): OutT = value
 
-    override fun finalize(context: Context, invocationsByOption: Map<Option, List<OptionParser.Invocation>>) {
+    override fun finalize(context: Context, invocationsByOption: Map<Option, List<Invocation>>) {
         occurred = invocationsByOption.isNotEmpty() || group.options.any {
             // Also trigger the group if any of the options have values from envvars or value sources
             it is OptionWithValues<*, *, *> && it.getFinalValue(context, emptyList(), it.envvar) !is FinalValue.Parsed
