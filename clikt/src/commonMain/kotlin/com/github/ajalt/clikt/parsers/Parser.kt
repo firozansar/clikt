@@ -149,6 +149,7 @@ internal object Parser {
             }
         }
 
+        // Group options for finalization
         val invocationsByOption = invocations.groupBy({ it.opt }, { it.inv })
         val invocationsByGroup = invocations.groupBy { (it.opt as? GroupableOption)?.parameterGroup }
         val invocationsByOptionByGroup = invocationsByGroup
@@ -163,8 +164,10 @@ internal object Parser {
                 // Finalize eager options
                 invocationsByOption.forEach { (o, inv) -> if (o.eager) o.finalize(context, inv) }
 
+                // Parse arguments
+                val (excess, parsedArgs) = parseArguments(positionalArgs, arguments, context)
+
                 // Finalize arguments before options, so that options can reference them
-                val (excess, parsedArgs) = parseArguments(positionalArgs, arguments)
                 val retries = finalizeArguments(parsedArgs, context)
                 i = handleExcessArguments(
                     excess,
@@ -249,7 +252,7 @@ internal object Parser {
                 return tokens.size - excess
             } else if (excess == 1 && subcommands.isNotEmpty()) {
                 val actual = positionalArgs.last()
-                throw NoSuchSubcommand(actual, context.correctionSuggestor(actual, subcommands.keys.toList()))
+                throw NoSuchSubcommand(actual, context.correctionSuggestor(actual, subcommands.keys.toList()), context)
             } else {
                 throwExcessArgsError(positionalArgs, excess, context)
             }
@@ -278,7 +281,7 @@ internal object Parser {
         } else {
             val possibilities = context.correctionSuggestor(name,
                 optionsByName.filterNot { it.value.hidden }.keys.toList())
-            throw NoSuchOption(name, possibilities)
+            throw NoSuchOption(name, possibilities, context)
         }
 
         return parseOptValues(option, name, ignoreUnknown, tokens, index, attachedValue, optionsByName, subcommandNames)
@@ -352,7 +355,7 @@ internal object Parser {
                     prefix == "-" && "-$tok" in optionsByName -> listOf("-$tok")
                     else -> emptyList()
                 }
-                throw NoSuchOption(name, possibilities)
+                throw NoSuchOption(name, possibilities, context)
             }
             if (option.nvalues.last > 0) {
                 val value = if (i < tok.lastIndex) tok.drop(i + 1) else null
@@ -370,6 +373,7 @@ internal object Parser {
     private fun parseArguments(
         positionalArgs: List<String>,
         arguments: List<Argument>,
+        context: Context,
     ): Pair<Int, Map<Argument, List<String>>> {
         val out = linkedMapOf<Argument, List<String>>().withDefault { listOf() }
         // The number of fixed size arguments that occur after an unlimited size argument. This
@@ -388,8 +392,8 @@ internal object Parser {
                 else -> argument.nvalues
             }
             if (consumed > remaining) {
-                if (remaining == 0) throw MissingArgument(argument)
-                else throw IncorrectArgumentValueCount(argument)
+                if (remaining == 0) throw MissingArgument(argument, context)
+                else throw IncorrectArgumentValueCount(argument, context)
             }
             out[argument] = out.getValue(argument) + positionalArgs.subList(i, i + consumed)
             i += consumed
@@ -399,6 +403,7 @@ internal object Parser {
         return excess to out
     }
 
+    /** Returns map of argument that need retries to their values */
     private fun finalizeArguments(
         parsedArgs: Map<Argument, List<String>>,
         context: Context,
@@ -422,7 +427,7 @@ internal object Parser {
         val sb = StringBuilder()
         var i = 0
         fun err(msg: String): Nothing {
-            throw InvalidFileFormat(filename, msg, text.take(i).count { it == '\n' })
+            throw InvalidFileFormat(filename, msg, text.take(i).count { it == '\n' }, context)
         }
         loop@ while (i < text.length) {
             val c = text[i]
@@ -482,13 +487,12 @@ internal object Parser {
     }
 
     private fun throwExcessArgsError(positionalArgs: List<String>, excess: Int, context: Context): Nothing {
-        val actual =
-            positionalArgs.takeLast(excess).joinToString(" ", limit = 3, prefix = "(", postfix = ")")
-        val message =
-            if (excess == 1) context.localization.extraArgumentOne(actual) else context.localization.extraArgumentMany(
-                actual,
-                excess)
-        throw UsageError(message)
+        val actual = positionalArgs.takeLast(excess).joinToString(" ", limit = 3, prefix = "(", postfix = ")")
+        val message = when (excess) {
+            1 -> context.localization.extraArgumentOne(actual)
+            else -> context.localization.extraArgumentMany(actual, excess)
+        }
+        throw UsageError(message, context = context)
     }
 }
 
