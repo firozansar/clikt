@@ -5,7 +5,8 @@
 - Publish JS artifacts with new IR compiler, in addition to the legacy format 
 
 ### Changed
-- Updated Kotlin to 1.6.10-RC
+- Updated Kotlin to 1.6.20-RC
+- When using `treatUnknownOptionsAsArgs`, grouped short options like `-abc` will be treated as an argument rather than reporting an error as long as they don't match any short options in the command. ([#340](https://github.com/ajalt/clikt/pull/340)) 
 
 ## 3.4.0
 ### Changed
