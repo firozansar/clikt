@@ -2,10 +2,10 @@
 
 ## Unreleased
 ### Added
-
 - Added `obj` setter to context builder as an alternative to `currentContext.obj`
 - Added `option().boolean()` and `argument().boolean()`
 - `uint()` and `ulong()` parameter type conversions.
+- `CliktCommand.test` extension for testing your commands and their output
 
 ### Changed
 - Updated Kotlin to 1.6.10-RC

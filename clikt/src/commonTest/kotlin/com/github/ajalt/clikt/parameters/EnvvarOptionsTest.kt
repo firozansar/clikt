@@ -207,9 +207,6 @@ class EnvvarOptionsTest {
         row("--x=z", "z", "yy"),
         row("--y=z", "xx", "z"),
     ) { argv, ex, ey ->
-        env["X"] = "xx"
-        env["Y"] = "yy"
-
         class G : OptionGroup() {
             val x by option(envvar="X").required()
             val y by option(envvar="Y")
@@ -224,6 +221,6 @@ class EnvvarOptionsTest {
             }
         }
 
-        C().withEnv().parse(argv)
+        C().withEnv("X" to "xx", "Y" to "yy").parse(argv)
     }
 }
